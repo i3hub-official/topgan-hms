@@ -1,17 +1,27 @@
-import type { Handle } from '@sveltejs/kit';
-import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { redirect, type Handle } from '@sveltejs/kit';
 
-const handleBetterAuth: Handle = async ({ event, resolve }) => {
-	const session = await auth.api.getSession({ headers: event.request.headers });
+export const handle: Handle = async ({ event, resolve }) => {
+  // 1. Get the session
+  const session = await auth.api.getSession({
+    headers: event.request.headers,
+  });
 
-	if (session) {
-		event.locals.session = session.session;
-		event.locals.user = session.user;
-	}
+  // 2. Set locals for use in load functions and pages
+  event.locals.user = session?.user;
+  event.locals.session = session?.session;
 
-	return svelteKitHandler({ event, resolve, auth, building });
+  // 3. Route Protection
+  const protectedRoutes = ['/dashboard', '/rooms', '/inventory', '/power', '/audit'];
+  const isProtected = protectedRoutes.some(route => event.url.pathname.startsWith(route));
+  
+  if (isProtected && !event.locals.user) {
+    throw redirect(303, '/login');
+  }
+
+  if (event.url.pathname === '/login' && event.locals.user) {
+    throw redirect(303, '/dashboard');
+  }
+
+  return await resolve(event);
 };
-
-export const handle: Handle = handleBetterAuth;
