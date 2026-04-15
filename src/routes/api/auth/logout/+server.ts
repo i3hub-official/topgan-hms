@@ -1,4 +1,4 @@
-import { auth } from '$lib/auth';
+import { auth } from '$lib/server/auth';
 import { json } from '@sveltejs/kit';
 
 export async function POST({ request, cookies }) {

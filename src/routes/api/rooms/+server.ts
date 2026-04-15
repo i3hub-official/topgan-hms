@@ -1,20 +1,14 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { rooms } from '$lib/db/schema';
+import { db, rooms } from '$lib/server/db';
+import type { RequestHandler } from './$types';
 
-export async function GET() {
+export const GET: RequestHandler = async () => {
   const allRooms = await db.select().from(rooms);
   return json(allRooms);
-}
+};
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const data = await request.json();
   const newRoom = await db.insert(rooms).values(data).returning();
   return json(newRoom[0]);
-}
-
-export async function PATCH({ request, params }) {
-  const { id, ...data } = await request.json();
-  const updated = await db.update(rooms).set(data).where(eq(rooms.id, id)).returning();
-  return json(updated[0]);
-}
+};
