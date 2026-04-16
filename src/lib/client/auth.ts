@@ -1,4 +1,6 @@
 // Client-side auth helpers
+
+// src/lib/client/auth.ts
 export async function signOut() {
   await fetch('/api/auth/sign-out', {
     method: 'POST',

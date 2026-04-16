@@ -1,6 +1,7 @@
 
 // This file sets up authentication using Better Auth with a Drizzle adapter and SvelteKit cookies plugin. It reads configuration from environment variables and initializes the auth instance that can be used throughout the application.
 //src/lib/server/auth/index.ts
+
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';

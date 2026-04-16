@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db, rooms, transactions, auditLogs, inventory, powerLogs } from '$lib/server/db';
-import { eq, and, gte, lt, sql } from 'drizzle-orm';
+import { eq, and, gte, lt, sql, desc } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals }) => {
@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ locals }) => {
   // 4. Check fuel efficiency anomalies
   const recentPowerLogs = await db.select()
     .from(powerLogs)
-    .orderBy(powerLogs.createdAt, 'desc')
+    .orderBy(desc(powerLogs.createdAt))
     .limit(5);
   
   const avgEfficiency = recentPowerLogs.reduce((sum, log) => sum + (log.efficiency || 0), 0) / recentPowerLogs.length;

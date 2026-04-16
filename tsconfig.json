@@ -15,7 +15,7 @@
 		"strict": true,
 		"moduleResolution": "bundler"
 	},
-	"include": ["src/**/*", "scripts/**/*", ".svelte-kit/**/*", "drizzle.config.ts"],
+	"include": ["src/**/*", "scripts/**/*", ".svelte-kit/**/*", "drizzle.config.ts", "seed.js", "seed.js"],
 	"exclude": ["node_modules", "dist"]
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

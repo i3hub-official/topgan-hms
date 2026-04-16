@@ -1,5 +1,5 @@
-import { db } from '$lib/db';
-import { rooms, transactions, auditLogs } from '$lib/db/schema';
+import { db } from '$lib/server/db/index';
+import { rooms, transactions, auditLogs } from '$lib/server/db/schema';
 import { eq, gte } from 'drizzle-orm';
 
 export interface AuditResult {
