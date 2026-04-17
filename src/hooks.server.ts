@@ -2,23 +2,25 @@ import { auth } from '$lib/server/auth';
 import { redirect, type Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  // 1. Get the session
+  // Get the session using the auth API with cookies from request
   const session = await auth.api.getSession({
     headers: event.request.headers,
   });
 
-  // 2. Set locals for use in load functions and pages
+  // Set locals for use in load functions and pages
   event.locals.user = session?.user;
   event.locals.session = session?.session;
 
-  // 3. Route Protection
-  const protectedRoutes = ['/dashboard', '/rooms', '/inventory', '/power', '/audit'];
-  const isProtected = protectedRoutes.some(route => event.url.pathname.startsWith(route));
+  // Define public routes that don't require authentication
+  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/signin'];
+  const isPublicRoute = publicRoutes.some(route => event.url.pathname.startsWith(route));
   
-  if (isProtected && !event.locals.user) {
+  // Protect all other routes
+  if (!isPublicRoute && !event.locals.user) {
     throw redirect(303, '/login');
   }
 
+  // Redirect to dashboard if already logged in and trying to access login page
   if (event.url.pathname === '/login' && event.locals.user) {
     throw redirect(303, '/dashboard');
   }

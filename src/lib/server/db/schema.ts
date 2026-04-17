@@ -60,6 +60,8 @@ export const rooms = sqliteTable('rooms', {
   roomNumber: text('room_number').notNull().unique(),
   status: text('status').notNull().default('vacant'),
   rate: real('rate').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }),
   lastCleaned: integer('last_cleaned', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
@@ -170,6 +172,31 @@ export const loginHistory = sqliteTable('login_history', {
   failureReason: text('failure_reason'),
 });
 
+export const staffDetails = sqliteTable('staff_details', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => user.id),
+  address: text('address'),
+  nextOfKinName: text('next_of_kin_name'),
+  nextOfKinPhone: text('next_of_kin_phone'),
+  bankName: text('bank_name'),
+  accountNumber: text('account_number'),
+  accountName: text('account_name'),
+  salary: real('salary'),
+  dateJoined: integer('date_joined', { mode: 'timestamp' }),
+});
+
+export const suppliers = sqliteTable('suppliers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  contactPerson: text('contact_person'),
+  phone: text('phone').notNull(),
+  email: text('email'),
+  category: text('category'),
+  address: text('address'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
+});
+
 // --- RELATIONS ---
 export const roomsRelations = relations(rooms, ({ many }) => ({
   transactions: many(transactions)
@@ -182,8 +209,16 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   })
 }));
 
-// --- CONSOLIDATED EXPORT ---
-// This object is what Better Auth and Drizzle use to map the models
+export const userRelations = relations(user, ({ many, one }) => ({
+  staffDetails: one(staffDetails, {
+    fields: [user.id],
+    references: [staffDetails.userId]
+  }),
+  staffActivity: many(staffActivity),
+  auditTrails: many(auditTrail)
+}));
+
+// --- CONSOLIDATED SCHEMA EXPORT ---
 export const schema = {
   user,
   session,
@@ -199,6 +234,6 @@ export const schema = {
   auditTrail,
   staffActivity,
   loginHistory,
-  roomsRelations,
-  transactionsRelations
+  staffDetails,
+  suppliers,
 };

@@ -1,8 +1,4 @@
-
-// This file sets up authentication using Better Auth with a Drizzle adapter and SvelteKit cookies plugin. It reads configuration from environment variables and initializes the auth instance that can be used throughout the application.
-//src/lib/server/auth/index.ts
-
-import { betterAuth } from 'better-auth/minimal';
+import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
@@ -10,11 +6,47 @@ import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 
 export const auth = betterAuth({
-	baseURL: env.ORIGIN,
-	secret: env.BETTER_AUTH_SECRET,
-	database: drizzleAdapter(db, { provider: 'sqlite' }),
-	emailAndPassword: { enabled: true },
-	plugins: [
-		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
-	]
+  baseURL: env.ORIGIN || 'http://localhost:5173',
+  secret: env.BETTER_AUTH_SECRET || 'your-secret-key-change-this',
+  database: drizzleAdapter(db, { provider: 'sqlite' }),
+  emailAndPassword: { 
+    enabled: true,
+    // Add these options for better debugging
+    async sendResetPassword(url, user) {
+      console.log('Reset password URL:', url);
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'staff',
+      },
+      staffId: {
+        type: 'string',
+        required: false,
+      },
+      phone: {
+        type: 'string',
+        required: false,
+      },
+      department: {
+        type: 'string',
+        required: false,
+      },
+      isActive: {
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+      },
+    },
+  },
+  plugins: [
+    sveltekitCookies(getRequestEvent)
+  ],
+  // Add logging for debugging
+  logger: {
+    level: 'debug',
+  },
 });

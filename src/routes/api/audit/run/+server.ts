@@ -1,9 +1,17 @@
+// src/routes/api/audit/run/%2Bserver.ts
+
 import { json } from '@sveltejs/kit';
 import { db, rooms, transactions, auditLogs, inventory, powerLogs } from '$lib/server/db';
 import { eq, and, gte, lt, sql, desc } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals }) => {
+    // Check if user is authenticated and has permission
+  if (!locals.user) {
+    return json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);

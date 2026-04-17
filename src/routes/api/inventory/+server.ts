@@ -12,8 +12,8 @@ export const GET: RequestHandler = async () => {
   // Calculate closing stock and variance
   const processed = items.map(item => ({
     ...item,
-    closingStock: item.openingStock + item.additions - item.sales,
-    variance: item.physicalCount ? (item.physicalCount - (item.openingStock + item.additions - item.sales)) : 0
+    closingStock: (item.openingStock ?? 0) + (item.additions ?? 0) - (item.sales ?? 0),
+    variance: item.physicalCount ? (item.physicalCount - ((item.openingStock ?? 0) + (item.additions ?? 0) - (item.sales ?? 0))) : 0
   }));
   
   return json(processed);

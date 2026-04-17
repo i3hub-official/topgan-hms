@@ -1,3 +1,5 @@
+// src/routes/api/auth/login/+server.ts
+
 import { auth } from '$lib/server/auth';
 import { json } from '@sveltejs/kit';
 

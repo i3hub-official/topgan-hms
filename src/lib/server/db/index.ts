@@ -1,3 +1,5 @@
+// src/lib/server/db/index.ts
+
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import * as allSchema from './schema';

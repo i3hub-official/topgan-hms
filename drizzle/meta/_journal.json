@@ -8,6 +8,13 @@
       "when": 1776242022636,
       "tag": "0000_long_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776303023710,
+      "tag": "0001_curly_thundra",
+      "breakpoints": true
     }
   ]
 }
