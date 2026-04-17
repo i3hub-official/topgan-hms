@@ -5,20 +5,16 @@
     User, Power, Edit, ArrowLeft, X, Check,
     Trash2, Save, FolderPlus
   } from 'lucide-svelte';
-  import { defaultSupplierCategories } from '$lib/server/categories';
   
-  // Use $props() instead of export let
   let { data, form } = $props();
   
   let suppliers = $derived(data.suppliers);
-  let categories = $derived(defaultSupplierCategories);
   let canEdit = $derived(data.canEdit);
   let user = $derived(data.user);
-let searchTerm = $state<string>('');
-  
+  let searchTerm = $state<string>('');
 
   let filteredSuppliers = $derived(
-    suppliers.filter(s => 
+    suppliers.filter((s: { name: string; category: string }) => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       s.category.toLowerCase().includes(searchTerm.toLowerCase())
     )
