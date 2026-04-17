@@ -10,6 +10,7 @@
     Shield, Briefcase, Key, AlertCircle, Crown, Lock
   } from 'lucide-svelte';
   
+  // Use $props() instead of export let
   let { data } = $props();
   
   let staff = $derived(data.staff);
