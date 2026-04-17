@@ -1,17 +1,13 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { 
     Truck, Plus, Search, Phone, Mail, MapPin, 
-    User, Power, Edit, ArrowLeft, X, Check,
-    Trash2, Save, FolderPlus
+    User
   } from 'lucide-svelte';
   
-  let { data, form } = $props();
+  let { data } = $props();
   
   let suppliers = $derived(data.suppliers);
-  let canEdit = $derived(data.canEdit);
-  let user = $derived(data.user);
-  let searchTerm = $state<string>('');
+  let searchTerm = $state('');
 
   let filteredSuppliers = $derived(
     suppliers.filter((s: { name: string; category: string }) => 
@@ -35,13 +31,14 @@
 
   <div class="relative mb-8">
     <Search class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-<input 
-  type="text"
-  value={searchTerm}
-  oninput={(e) => searchTerm = (e.target as HTMLInputElement).value}
-  placeholder="Search vendors..."
-  class="w-full pl-14 pr-6 py-5 bg-white border border-slate-100 rounded-[2rem] font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-/>
+    <input 
+      type="text"
+      value={searchTerm}
+      oninput={(e) => searchTerm = (e.target as HTMLInputElement).value}
+      placeholder="Search vendors..."
+      class="w-full pl-14 pr-6 py-5 bg-white border border-slate-100 rounded-[2rem] font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+    />
+  </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {#each filteredSuppliers as vendor (vendor._id)}
