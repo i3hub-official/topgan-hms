@@ -1,44 +1,25 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	// Using native URLSearchParams for form data
-	import {
-		Clock,
-		Calendar,
-		MapPin,
-		CheckCircle2,
-		AlertCircle,
-		TrendingUp,
-		Briefcase,
-		Award,
-		Timer,
-		Play,
-		Square,
-		Edit2,
-		Users,
-		Search,
-		Filter,
-		User,
-		Mail,
-		Phone,
-		X,
-		Building,
-		Coffee,
-		Store,
-		ChefHat,
-		Home,
-		ChevronRight
-	} from 'lucide-svelte';
-
-	let { data } = $props();
-
-	let user = $derived(data.user);
-	let todayActivity = $derived(data.todayActivity);
-	let history = $derived(data.history);
-	let stats = $derived(data.stats);
-	let needsTracking = $derived(data.needsTracking);
-	let isAdmin = $derived(data.isAdmin);
-	let allStaffActivity = $derived(data.allStaffActivity || []);
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { 
+    Clock, Calendar, MapPin, CheckCircle2, 
+    AlertCircle, TrendingUp, Briefcase, Award,
+    Timer, Play, Square, Edit2, Users,
+    Search, Filter, User, Mail, Phone, X,
+    Building, Coffee, Store, ChefHat, Home
+  } from 'lucide-svelte';
+  
+  // Use $props() instead of export let
+  let { data } = $props();
+  
+  let user = $derived(data.user);
+  let todayActivity = $derived(data.todayActivity);
+  let history = $derived(data.history);
+  let stats = $derived(data.stats);
+  let needsTracking = $derived(data.needsTracking);
+  let isAdmin = $derived(data.isAdmin);
+  let allStaffActivity = $derived(data.allStaffActivity || []);
+  
 
 	let showNotesModal = $state(false);
 	let showLocationModal = $state(false);

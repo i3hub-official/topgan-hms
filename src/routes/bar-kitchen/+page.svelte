@@ -9,6 +9,7 @@
     ClipboardList, ChefHat, Store, Wine
   } from 'lucide-svelte';
   
+  // Use $props() instead of export let
   let { data } = $props();
   
   let inventory = $derived(data.inventory);
@@ -17,6 +18,7 @@
   let stats = $derived(data.stats);
   let allowedSections = $derived(data.allowedSections);
   let user = $derived(data.user);
+  
   
   let activeSection = $state(allowedSections[0] || 'bar');
   let showStockModal = $state(false);

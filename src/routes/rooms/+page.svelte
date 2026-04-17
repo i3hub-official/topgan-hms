@@ -8,6 +8,7 @@
     Calendar, DollarSign, Clock, AlertTriangle
   } from 'lucide-svelte';
   
+  // Use $props() instead of export let
   let { data } = $props();
   
   let rooms = $derived(data.rooms);

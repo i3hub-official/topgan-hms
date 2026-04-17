@@ -7,6 +7,7 @@
     Download, Filter, ChevronDown, ChevronUp
   } from 'lucide-svelte';
   
+  // Use $props() instead of export let
   let { data } = $props();
   
   let personalShifts = $derived(data.personalShifts);
@@ -18,6 +19,8 @@
   let recentActivity = $derived(data.recentActivity);
   let user = $derived(data.user);
   let isManager = $derived(data.isManager);
+  
+
   
   let showShifts = $state(true);
   let showTransactions = $state(true);

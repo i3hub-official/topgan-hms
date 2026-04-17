@@ -1,10 +1,20 @@
 <script lang="ts">
-  import { Phone, User, Truck, Plus, Search, ExternalLink, Mail, MapPin } from 'lucide-svelte';
+  import { goto } from '$app/navigation';
+  import { 
+    Truck, Plus, Search, Phone, Mail, MapPin, 
+    User, Power, Edit, ArrowLeft, X, Check,
+    Trash2, Save, FolderPlus
+  } from 'lucide-svelte';
+  import { supplierCategories } from '$lib/config/categories';
   
-  // Svelte 5 state
-  let suppliers = $state<any[]>([]); // Fetch from API in onMount
-  let searchTerm = $state('');
-  let isAdding = $state(false);
+  // Use $props() instead of export let
+  let { data, form } = $props();
+  
+  let suppliers = $derived(data.suppliers);
+  let categories = $derived(supplierCategories);
+  let canEdit = $derived(data.canEdit);
+  let user = $derived(data.user);
+  
 
   let filteredSuppliers = $derived(
     suppliers.filter(s => 

@@ -11,6 +11,7 @@
     Truck
   } from 'lucide-svelte';
   
+  // Use $props() instead of export let
   let { data } = $props();
   
   // Safe data access with fallbacks
