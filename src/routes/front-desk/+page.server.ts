@@ -1,49 +1,37 @@
 import type { PageServerLoad, Actions } from './$types';
-import { db, rooms, transactions } from '$lib/server/db';
+import { db, rooms, transactions, user, auditTrail } from '$lib/server/db';
 import { eq, and, gte, lt, desc } from 'drizzle-orm';
 import { error, redirect } from '@sveltejs/kit';
 
-// Define types for better type safety
-interface Room {
-  id: number;
-  roomNumber: string;
-  status: string;
-  rate: number;
-  isActive: boolean | null;
-  deletedAt: Date | null;
-  lastCleaned: Date | null;
-  createdAt: Date | null;
+// Define permission functions directly in the file to avoid import issues
+function canManageFrontDesk(role: string): boolean {
+  return ['owner', 'super_admin', 'general_manager', 'front_desk_manager'].includes(role);
 }
 
-interface Transaction {
-  id: number;
-  roomId: number | null;
-  guestName: string;
-  amount: number;
-  paymentMethod: string;
-  checkIn: Date;
-  checkOut: Date | null;
-  status: string;
-  createdAt: Date | null;
+function canToggleRoomMaintenance(role: string): boolean {
+  return ['owner', 'super_admin', 'general_manager', 'front_desk_manager'].includes(role);
+}
+
+function canDisableRoom(role: string): boolean {
+  return ['owner', 'super_admin'].includes(role);
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-  // Check if user is authenticated and has front desk role
   if (!locals.user) {
     throw redirect(303, '/login');
   }
   
-  // Type assertion for user role
   const userRole = locals.user.role as string;
-  const allowedRoles = ['owner', 'super_admin', 'general_manager', 'front_desk_manager'];
-  if (!allowedRoles.includes(userRole)) {
+  const canManage = canManageFrontDesk(userRole);
+  
+  if (!canManage) {
     throw redirect(303, '/dashboard');
   }
   
   // Get all rooms
   const allRooms = await db.select().from(rooms).orderBy(rooms.roomNumber);
   
-  // Get today's check-ins and check-outs
+  // Get today's transactions
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -59,7 +47,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     )
     .orderBy(desc(transactions.createdAt));
   
-  // Get active guests (checked in but not checked out)
+  // Get active guests
   const activeGuests = await db.select()
     .from(transactions)
     .where(eq(transactions.status, 'active'))
@@ -67,11 +55,12 @@ export const load: PageServerLoad = async ({ locals }) => {
   
   const stats = {
     totalRooms: allRooms.length,
-    availableRooms: allRooms.filter((r: Room) => r.status === 'vacant').length,
-    occupiedRooms: allRooms.filter((r: Room) => r.status === 'occupied').length,
-    maintenanceRooms: allRooms.filter((r: Room) => r.status === 'maintenance').length,
-    todayCheckins: todayTransactions.filter((t: Transaction) => t.status === 'active').length,
-    todayRevenue: todayTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0)
+    availableRooms: allRooms.filter(r => r.status === 'vacant' && r.isActive === true).length,
+    occupiedRooms: allRooms.filter(r => r.status === 'occupied').length,
+    maintenanceRooms: allRooms.filter(r => r.status === 'maintenance').length,
+    inactiveRooms: allRooms.filter(r => r.isActive === false).length,
+    todayCheckins: todayTransactions.filter(t => t.status === 'active').length,
+    todayRevenue: todayTransactions.reduce((sum, t) => sum + t.amount, 0)
   };
   
   return {
@@ -79,14 +68,21 @@ export const load: PageServerLoad = async ({ locals }) => {
     todayTransactions,
     activeGuests,
     stats,
-    user: locals.user
+    user: locals.user,
+    permissions: {
+      canToggleMaintenance: canToggleRoomMaintenance(userRole),
+      canDisableRoom: canDisableRoom(userRole)
+    }
   };
 };
 
 export const actions: Actions = {
   checkIn: async ({ request, locals }) => {
-    if (!locals.user) {
-      throw error(401, 'Unauthorized');
+    if (!locals.user) throw error(401, 'Unauthorized');
+    
+    const canManage = canManageFrontDesk(locals.user.role as string);
+    if (!canManage) {
+      throw error(403, 'Unauthorized - Only front desk managers and above can check in guests');
     }
     
     const formData = await request.formData();
@@ -95,14 +91,12 @@ export const actions: Actions = {
     const amount = parseFloat(formData.get('amount') as string);
     const paymentMethod = formData.get('paymentMethod') as string;
     
-    // Check if room is available
     const room = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
-    if (room.length === 0 || room[0].status !== 'vacant') {
+    if (room.length === 0 || room[0].status !== 'vacant' || room[0].isActive === false) {
       throw error(400, 'Room is not available');
     }
     
-    // Create transaction
-    await db.insert(transactions).values({
+    const newTransaction = await db.insert(transactions).values({
       roomId,
       guestName,
       amount,
@@ -110,52 +104,127 @@ export const actions: Actions = {
       checkIn: new Date(),
       status: 'active',
       createdAt: new Date()
-    });
+    }).returning();
     
-    // Update room status
     await db.update(rooms).set({ status: 'occupied' }).where(eq(rooms.id, roomId));
     
-    return { success: true, message: 'Guest checked in successfully' };
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: 'CHECK_IN',
+      entityType: 'room',
+      entityId: roomId.toString(),
+      newValues: { guestName, amount, paymentMethod, roomNumber: room[0].roomNumber },
+      createdAt: new Date()
+    });
+    
+    return { success: true, transactionId: newTransaction[0]?.id };
   },
   
   checkOut: async ({ request, locals }) => {
-    if (!locals.user) {
-      throw error(401, 'Unauthorized');
+    if (!locals.user) throw error(401, 'Unauthorized');
+    
+    const canManage = canManageFrontDesk(locals.user.role as string);
+    if (!canManage) {
+      throw error(403, 'Unauthorized - Only front desk managers and above can check out guests');
     }
     
     const formData = await request.formData();
     const transactionId = parseInt(formData.get('transactionId') as string);
     const roomId = parseInt(formData.get('roomId') as string);
     
-    // Update transaction
-    await db.update(transactions).set({
-      checkOut: new Date(),
-      status: 'completed'
-    }).where(eq(transactions.id, transactionId));
+    const transaction = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (transaction.length === 0) throw error(404, 'Transaction not found');
     
-    // Update room status
+    const checkOutTime = new Date();
+    const checkInTime = new Date(transaction[0].checkIn);
+    const hoursStayed = Math.ceil((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60));
+    
+    await db.update(transactions)
+      .set({ checkOut: checkOutTime, status: 'completed' })
+      .where(eq(transactions.id, transactionId));
+    
     await db.update(rooms).set({ status: 'vacant' }).where(eq(rooms.id, roomId));
     
-    return { success: true, message: 'Guest checked out successfully' };
-  },
-  
-  addRoom: async ({ request, locals }) => {
-    if (!locals.user) {
-      throw error(401, 'Unauthorized');
-    }
-    
-    const formData = await request.formData();
-    const roomNumber = formData.get('roomNumber') as string;
-    const rate = parseFloat(formData.get('rate') as string);
-    
-    await db.insert(rooms).values({
-      roomNumber,
-      rate,
-      status: 'vacant',
-      isActive: true,
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: 'CHECK_OUT',
+      entityType: 'room',
+      entityId: roomId.toString(),
+      newValues: { hoursStayed, guestName: transaction[0].guestName },
       createdAt: new Date()
     });
     
-    return { success: true, message: 'Room added successfully' };
+    return { success: true, hoursStayed };
+  },
+  
+  toggleMaintenance: async ({ request, locals }) => {
+    if (!locals.user) throw error(401, 'Unauthorized');
+    
+    const canToggle = canToggleRoomMaintenance(locals.user.role as string);
+    if (!canToggle) {
+      throw error(403, 'Unauthorized - Only front desk managers and above can toggle maintenance');
+    }
+    
+    const formData = await request.formData();
+    const roomId = parseInt(formData.get('roomId') as string);
+    
+    const room = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
+    if (room.length === 0) throw error(404, 'Room not found');
+    
+    const newStatus = room[0].status === 'maintenance' ? 'vacant' : 'maintenance';
+    
+    await db.update(rooms).set({ status: newStatus }).where(eq(rooms.id, roomId));
+    
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: newStatus === 'maintenance' ? 'MAINTENANCE_START' : 'MAINTENANCE_END',
+      entityType: 'room',
+      entityId: roomId.toString(),
+      oldValues: { status: room[0].status },
+      newValues: { status: newStatus },
+      createdAt: new Date()
+    });
+    
+    return { success: true, newStatus };
+  },
+  
+  toggleRoomActive: async ({ request, locals }) => {
+    if (!locals.user) throw error(401, 'Unauthorized');
+    
+    const canDisable = canDisableRoom(locals.user.role as string);
+    if (!canDisable) {
+      throw error(403, 'Only owners and super admins can disable rooms');
+    }
+    
+    const formData = await request.formData();
+    const roomId = parseInt(formData.get('roomId') as string);
+    
+    const room = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
+    if (room.length === 0) throw error(404, 'Room not found');
+    
+    const newActiveState = !room[0].isActive;
+    
+    await db.update(rooms)
+      .set({ 
+        isActive: newActiveState,
+        status: newActiveState ? 'vacant' : room[0].status
+      })
+      .where(eq(rooms.id, roomId));
+    
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: newActiveState ? 'ROOM_ACTIVATED' : 'ROOM_DEACTIVATED',
+      entityType: 'room',
+      entityId: roomId.toString(),
+      oldValues: { isActive: room[0].isActive },
+      newValues: { isActive: newActiveState },
+      createdAt: new Date()
+    });
+    
+    return { success: true, isActive: newActiveState };
   }
 };

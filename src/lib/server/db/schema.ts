@@ -97,12 +97,19 @@ export const inventory = sqliteTable('inventory', {
   itemName: text('item_name').notNull(),
   category: text('category').notNull(),
   unit: text('unit').notNull(),
+  supplierId: integer('supplier_id').references(() => suppliers.id),
+  costPrice: real('cost_price').default(0),
+  sellingPrice: real('selling_price').default(0),
   openingStock: real('opening_stock').default(0),
   additions: real('additions').default(0),
   sales: real('sales').default(0),
   closingStock: real('closing_stock').default(0),
   physicalCount: real('physical_count'),
   variance: real('variance'),
+  reorderLevel: real('reorder_level').default(10),
+  reorderQuantity: real('reorder_quantity').default(50),
+  location: text('location'),
+  lastOrderDate: integer('last_order_date', { mode: 'timestamp' }),
   date: integer('date', { mode: 'timestamp' }).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
@@ -113,6 +120,16 @@ export const inventoryMovements = sqliteTable('inventory_movements', {
   type: text('type').notNull(),
   quantity: real('quantity').notNull(),
   reason: text('reason'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
+});
+
+export const categories = sqliteTable('categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  type: text('type').notNull(), // 'supplier' or 'inventory'
+  name: text('name').notNull(),
+  icon: text('icon').default('📦'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  sortOrder: integer('sort_order').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
 
@@ -197,6 +214,30 @@ export const suppliers = sqliteTable('suppliers', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
 
+export const purchaseOrders = sqliteTable('purchase_orders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderNumber: text('order_number').notNull().unique(),
+  supplierId: integer('supplier_id').notNull().references(() => suppliers.id),
+  orderDate: integer('order_date', { mode: 'timestamp' }).notNull(),
+  expectedDelivery: integer('expected_delivery', { mode: 'timestamp' }),
+  actualDelivery: integer('actual_delivery', { mode: 'timestamp' }),
+  status: text('status').default('pending'),
+  totalAmount: real('total_amount').default(0),
+  notes: text('notes'),
+  createdBy: text('created_by').references(() => user.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
+});
+
+export const purchaseOrderItems = sqliteTable('purchase_order_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderId: integer('order_id').notNull().references(() => purchaseOrders.id),
+  itemId: integer('item_id').notNull().references(() => inventory.id),
+  quantity: real('quantity').notNull(),
+  unitPrice: real('unit_price').notNull(),
+  totalPrice: real('total_price').notNull(),
+  receivedQuantity: real('received_quantity').default(0)
+});
+
 // --- RELATIONS ---
 export const roomsRelations = relations(rooms, ({ many }) => ({
   transactions: many(transactions)
@@ -215,8 +256,61 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [staffDetails.userId]
   }),
   staffActivity: many(staffActivity),
-  auditTrails: many(auditTrail)
+  auditTrails: many(auditTrail),
+  createdPurchaseOrders: many(purchaseOrders, {
+    relationName: 'createdBy'
+  })
 }));
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [inventory.supplierId],
+    references: [suppliers.id]
+  })
+}));
+
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  inventory: many(inventory),
+  purchaseOrders: many(purchaseOrders)
+}));
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [purchaseOrders.supplierId],
+    references: [suppliers.id]
+  }),
+  createdByUser: one(user, {
+    fields: [purchaseOrders.createdBy],
+    references: [user.id],
+    relationName: 'createdBy'
+  }),
+  items: many(purchaseOrderItems)
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  order: one(purchaseOrders, {
+    fields: [purchaseOrderItems.orderId],
+    references: [purchaseOrders.id]
+  }),
+  item: one(inventory, {
+    fields: [purchaseOrderItems.itemId],
+    references: [inventory.id]
+  })
+}));
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  // Categories can have many inventory items
+  // If you want to link categories to inventory items by category name
+  // This is a conceptual relation - actual linking would require categoryId in inventory table
+  inventoryItems: many(inventory),
+  suppliers: many(suppliers)
+}));
+
+// Optional: Add categoryId to inventory for proper relation
+// export const inventoryWithCategory = sqliteTable('inventory', {
+//   ...inventory,
+//   categoryId: integer('category_id').references(() => categories.id),
+// });
 
 // --- CONSOLIDATED SCHEMA EXPORT ---
 export const schema = {
@@ -236,4 +330,7 @@ export const schema = {
   loginHistory,
   staffDetails,
   suppliers,
+  categories,
+  purchaseOrders,
+  purchaseOrderItems
 };

@@ -22,6 +22,7 @@
   
   // Get user from page data
   let user = $derived($page.data.user);
+  let userRole = $derived(user?.role);
   
   // Svelte 5 State Runes
   let stats = $state({
@@ -66,9 +67,8 @@
       const data = await res.json();
       
       if (res.ok) {
-        // Show audit results
         alert(`Audit Complete!\n\nDiscrepancy: ${data.discrepancy} rooms\nFlags: ${data.flags?.length || 0} issues found\n\nCheck audit logs for details.`);
-        await loadDashboardData(); // Refresh dashboard
+        await loadDashboardData();
         await goto('/audit/report');
       } else {
         alert(`Audit failed: ${data.error}`);
@@ -88,100 +88,34 @@
   
   // Role-based dashboard title
   const getDashboardTitle = () => {
-    const role = user?.role;
-    switch(role) {
+    switch(userRole) {
       case 'owner': return 'Owner Dashboard';
       case 'super_admin': return 'Super Admin Dashboard';
       case 'general_manager': return 'General Manager Dashboard';
       case 'front_desk_manager': return 'Front Desk Dashboard';
       case 'store_keeper': return 'Store Keeper Dashboard';
+      case 'store_keeper_bar': return 'Bar Manager Dashboard';
+      case 'store_keeper_kitchen': return 'Kitchen Manager Dashboard';
+      case 'store_keeper_store': return 'Store Manager Dashboard';
       case 'cleaner': return 'Cleaner Dashboard';
       default: return 'Staff Dashboard';
     }
   };
   
-  // Role-based navigation buttons for the management section
-  const getManagementButtons = () => {
-    const role = user?.role;
-    const buttons = [];
-    
-    // Rooms - everyone can see
-    buttons.push({
-      label: 'Room Register',
-      description: 'Check-ins & Live Status',
-      icon: Hotel,
-      path: '/rooms',
-      color: 'indigo'
-    });
-    
-    // Inventory - store keepers and above
-    if (['owner', 'super_admin', 'general_manager', 'store_keeper'].includes(role)) {
-      buttons.push({
-        label: 'Bar & Store',
-        description: 'Stock Control & Bin Cards',
-        icon: GlassWater,
-        path: '/inventory',
-        color: 'amber'
-      });
-    }
-    
-    // Suppliers - store keepers and above
-    if (['owner', 'super_admin', 'general_manager', 'store_keeper'].includes(role)) {
-      buttons.push({
-        label: 'Suppliers',
-        description: 'Vendor Management',
-        icon: Truck,
-        path: '/suppliers',
-        color: 'emerald'
-      });
-    }
-    
-    // Staff Management - managers and above
-    if (['owner', 'super_admin', 'general_manager'].includes(role)) {
-      buttons.push({
-        label: 'Staff Management',
-        description: 'Personnel & Roles',
-        icon: Users,
-        path: '/staff',
-        color: 'purple'
-      });
-    }
-    
-    // Power Log - managers and above
-    if (['owner', 'super_admin', 'general_manager'].includes(role)) {
-      buttons.push({
-        label: 'Power Log',
-        description: 'Fuel Tracking & NEPA',
-        icon: Zap,
-        path: '/power',
-        color: 'orange'
-      });
-    }
-    
-    // Time Tracking - cleaners and staff
-    if (['cleaner', 'staff'].includes(role)) {
-      buttons.push({
-        label: 'Time Tracking',
-        description: 'Clock In/Out',
-        icon: Clock,
-        path: '/time-tracking',
-        color: 'teal'
-      });
-    }
-    
-    // Physical Audit - managers and above
-    if (['owner', 'super_admin', 'general_manager'].includes(role)) {
-      buttons.push({
-        label: 'Physical Audit',
-        description: 'Manual Walkthrough Count',
-        icon: ClipboardCheck,
-        path: '/audit/physical',
-        color: 'rose'
-      });
-    }
-    
-    return buttons;
-  };
+  // Check if user is a manager (can run night audit)
+  const isManager = ['owner', 'super_admin', 'general_manager'].includes(userRole);
+  
+  // Check if user can see discrepancies (owner and super_admin only)
+  const canSeeDiscrepancies = ['owner', 'super_admin'].includes(userRole);
+  
+  // Check if user can manage inventory
+  const canManageInventory = ['owner', 'super_admin', 'general_manager', 'store_keeper', 'store_keeper_bar', 'store_keeper_kitchen', 'store_keeper_store'].includes(userRole);
+  
+  // Check if user can manage staff
+  const canManageStaff = ['owner', 'super_admin', 'general_manager'].includes(userRole);
+  
+  // Check if user can access front desk
+  const canAccessFrontDesk = ['owner', 'super_admin', 'general_manager', 'front_desk_manager'].includes(userRole);
 </script>
 
 <div class="min-h-screen bg-white text-slate-900 font-sans">
@@ -199,7 +133,7 @@
     <div class="flex items-center gap-6">
       <div class="text-right hidden md:block">
         <p class="text-sm font-bold text-slate-700">{user?.name || 'User'}</p>
-        <p class="text-[10px] text-slate-400 font-bold uppercase">{user?.role?.replace('_', ' ') || 'Staff'}</p>
+        <p class="text-[10px] text-slate-400 font-bold uppercase">{user?.role?.replace(/_/g, ' ') || 'Staff'}</p>
         {#if user?.staffId}
           <p class="text-[9px] text-slate-300 font-mono">ID: {user.staffId}</p>
         {/if}
@@ -223,7 +157,9 @@
         </div>
       </div>
     {:else}
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+      <!-- Stats Cards - Row 1 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <!-- Occupancy Card -->
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between mb-4">
             <div class="p-2 bg-slate-50 rounded-lg text-slate-400"><Hotel size={20} /></div>
@@ -234,12 +170,14 @@
           <p class="text-xs text-slate-400 mt-1">{stats.occupiedRooms} / {stats.totalRooms} rooms</p>
         </div>
 
+        <!-- Revenue Card -->
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
           <div class="p-2 bg-slate-50 rounded-lg text-slate-400 w-fit mb-4"><Wallet size={20} /></div>
           <p class="text-xs font-bold text-slate-400 uppercase">Today's Revenue</p>
           <p class="text-3xl font-black text-slate-900">₦{stats.totalRevenue.toLocaleString()}</p>
         </div>
 
+        <!-- Security Flags Card -->
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
           <div class="p-2 bg-slate-50 rounded-lg text-slate-400 w-fit mb-4"><BellRing size={20} /></div>
           <p class="text-xs font-bold text-slate-400 uppercase">Security Flags</p>
@@ -248,11 +186,28 @@
           </p>
         </div>
 
-        {#if ['owner', 'super_admin', 'general_manager'].includes(user?.role)}
-          <div class="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-100 flex flex-col justify-between group">
+        <!-- Time Tracking Card - Appears for EVERYONE -->
+        <div class="bg-teal-600 rounded-2xl p-6 shadow-xl shadow-teal-100 flex flex-col justify-between group">
+          <div class="flex items-center gap-2 text-teal-100 mb-2">
+            <Clock size={14} fill="currentColor" />
+            <p class="text-[10px] font-bold uppercase tracking-wider">Time Tracking</p>
+          </div>
+          <button
+            onclick={async () => await goto('/time-tracking')}
+            class="w-full py-3 bg-white text-teal-600 rounded-xl text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm"
+          >
+            Clock In/Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Night Audit Card - Only for managers (Row 2) -->
+      {#if isManager}
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <div class="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-100 flex flex-col justify-between group md:col-start-1 md:col-end-2">
             <div class="flex items-center gap-2 text-indigo-100 mb-2">
               <Play size={14} fill="currentColor" />
-              <p class="text-[10px] font-bold uppercase tracking-wider">Audit Protocol</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider">Night Audit</p>
             </div>
             <button
               onclick={runNightAudit}
@@ -262,92 +217,246 @@
               {runningAudit ? 'Running Audit...' : 'Run Night Audit'}
             </button>
           </div>
-        {:else if user?.role === 'cleaner'}
-          <div class="bg-teal-600 rounded-2xl p-6 shadow-xl shadow-teal-100 flex flex-col justify-between group">
-            <div class="flex items-center gap-2 text-teal-100 mb-2">
-              <Clock size={14} fill="currentColor" />
-              <p class="text-[10px] font-bold uppercase tracking-wider">Time Tracking</p>
-            </div>
-            <button
-              onclick={async () => await goto('/time-tracking')}
-              class="w-full py-3 bg-white text-teal-600 rounded-xl text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm"
-            >
-              Clock In/Out
-            </button>
-          </div>
-        {:else if user?.role === 'store_keeper'}
-          <div class="bg-amber-600 rounded-2xl p-6 shadow-xl shadow-amber-100 flex flex-col justify-between group">
-            <div class="flex items-center gap-2 text-amber-100 mb-2">
-              <Package size={14} fill="currentColor" />
-              <p class="text-[10px] font-bold uppercase tracking-wider">Stock Alert</p>
-            </div>
-            <button
-              onclick={async () => await goto('/inventory')}
-              class="w-full py-3 bg-white text-amber-600 rounded-xl text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm"
-            >
-              Check Inventory
-            </button>
-          </div>
-        {/if}
-      </div>
-      
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div class="lg:col-span-2">
-          <div class="flex items-center gap-3 mb-6">
-            <ShieldAlert size={18} class="text-slate-400" />
-            <h2 class="text-lg font-black text-slate-800 tracking-tight">System Discrepancies</h2>
-          </div>
-
-          {#if recentFlags.length === 0}
-            <div class="bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl p-12 text-center">
-              <div class="bg-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <CheckCircle2 class="text-emerald-500" size={24} />
-              </div>
-              <p class="text-sm font-bold text-slate-500">No flags detected. Revenue is secure.</p>
-            </div>
-          {:else}
-            <div class="space-y-3">
-              {#each recentFlags as flag (flag.timestamp)}
-                <div class="group bg-white border border-slate-100 rounded-2xl p-5 hover:border-orange-200 hover:shadow-lg hover:shadow-orange-500/5 transition-all">
-                  <div class="flex justify-between items-start">
-                    <div class="flex gap-4">
-                      <div class="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
-                        <AlertTriangle size={20} />
-                      </div>
-                      <div class="flex-1">
-                        <p class="font-black text-slate-800 text-sm tracking-tight">{flag.type}</p>
-                        <p class="text-sm text-slate-500 mt-1 leading-snug">{flag.message}</p>
-                      </div>
-                    </div>
-                    <span class="text-[10px] font-black text-slate-300 font-mono whitespace-nowrap ml-4">
-                      {new Date(flag.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
         </div>
+      {/if}
+      
+      <!-- System Discrepancies and Quick Links Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <!-- System Discrepancies - Only for owner and super_admin -->
+        {#if canSeeDiscrepancies}
+          <div class="lg:col-span-2">
+            <div class="flex items-center gap-3 mb-6">
+              <ShieldAlert size={18} class="text-slate-400" />
+              <h2 class="text-lg font-black text-slate-800 tracking-tight">System Discrepancies</h2>
+            </div>
 
-        <div>
-          <h2 class="text-lg font-black text-slate-800 mb-6 tracking-tight">Management</h2>
-          <div class="grid grid-cols-1 gap-3">
-            {#each getManagementButtons() as button (button.label)}
+            {#if recentFlags.length === 0}
+              <div class="bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl p-12 text-center">
+                <div class="bg-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <CheckCircle2 class="text-emerald-500" size={24} />
+                </div>
+                <p class="text-sm font-bold text-slate-500">No flags detected. Revenue is secure.</p>
+              </div>
+            {:else}
+              <div class="space-y-3">
+                {#each recentFlags as flag (flag.timestamp)}
+                  <div class="group bg-white border border-slate-100 rounded-2xl p-5 hover:border-orange-200 hover:shadow-lg hover:shadow-orange-500/5 transition-all">
+                    <div class="flex justify-between items-start">
+                      <div class="flex gap-4">
+                        <div class="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
+                          <AlertTriangle size={20} />
+                        </div>
+                        <div class="flex-1">
+                          <p class="font-black text-slate-800 text-sm tracking-tight">{flag.type}</p>
+                          <p class="text-sm text-slate-500 mt-1 leading-snug">{flag.message}</p>
+                        </div>
+                      </div>
+                      <span class="text-[10px] font-black text-slate-300 font-mono whitespace-nowrap ml-4">
+                        {new Date(flag.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+          
+          <!-- Quick Links - Takes 1/3 when discrepancies visible -->
+          <div>
+            <h2 class="text-lg font-black text-slate-800 mb-6 tracking-tight">Quick Links</h2>
+            <div class="grid grid-cols-1 gap-3">
+              <!-- Room Register - Everyone -->
               <button 
-                onclick={async () => await goto(button.path)} 
-                class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-{button.color}-600 transition-all text-left w-full"
+                onclick={async () => await goto('/rooms')} 
+                class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-indigo-600 transition-all text-left w-full"
               >
-                <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-{button.color}-600 group-hover:bg-{button.color}-500 group-hover:text-white transition-colors shrink-0">
-                  <button.icon size={20} />
+                <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                  <Hotel size={20} />
                 </span>
                 <div class="ml-4 flex-1">
-                  <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">{button.label}</p>
-                  <p class="text-[10px] font-bold text-slate-400 group-hover:text-{button.color}-100 transition-colors">{button.description}</p>
+                  <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Room Register</p>
+                  <p class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-100 transition-colors">Check-ins & Live Status</p>
                 </div>
               </button>
-            {/each}
+
+              <!-- Time Tracking - Everyone -->
+              <button 
+                onclick={async () => await goto('/time-tracking')} 
+                class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-teal-600 transition-all text-left w-full"
+              >
+                <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-teal-600 group-hover:bg-teal-500 group-hover:text-white transition-colors shrink-0">
+                  <Clock size={20} />
+                </span>
+                <div class="ml-4 flex-1">
+                  <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Time Tracking</p>
+                  <p class="text-[10px] font-bold text-slate-400 group-hover:text-teal-100 transition-colors">Clock In/Out & Reports</p>
+                </div>
+              </button>
+
+              <!-- Front Desk - For front desk managers and above -->
+              {#if canAccessFrontDesk}
+                <button 
+                  onclick={async () => await goto('/front-desk')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-indigo-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                    <Hotel size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Front Desk</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-100 transition-colors">Check-in/out</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Inventory - For store keepers and above -->
+              {#if canManageInventory}
+                <button 
+                  onclick={async () => await goto('/inventory')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-amber-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
+                    <Package size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Inventory</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-amber-100 transition-colors">Stock Control</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Suppliers - For store keepers and above -->
+              {#if canManageInventory}
+                <button 
+                  onclick={async () => await goto('/suppliers')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-emerald-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                    <Truck size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Suppliers</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-emerald-100 transition-colors">Vendor Management</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Staff Management - For managers only -->
+              {#if canManageStaff}
+                <button 
+                  onclick={async () => await goto('/staff')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-purple-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
+                    <Users size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Staff Management</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-purple-100 transition-colors">Personnel & Roles</p>
+                  </div>
+                </button>
+              {/if}
+            </div>
           </div>
-        </div>
+        {:else}
+          <!-- Quick Links - Takes full width when discrepancies hidden -->
+          <div class="lg:col-span-3">
+            <h2 class="text-lg font-black text-slate-800 mb-6 tracking-tight">Quick Links</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <!-- Room Register - Everyone -->
+              <button 
+                onclick={async () => await goto('/rooms')} 
+                class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-indigo-600 transition-all text-left w-full"
+              >
+                <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                  <Hotel size={20} />
+                </span>
+                <div class="ml-4 flex-1">
+                  <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Room Register</p>
+                  <p class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-100 transition-colors">Check-ins & Live Status</p>
+                </div>
+              </button>
+
+              <!-- Time Tracking - Everyone -->
+              <button 
+                onclick={async () => await goto('/time-tracking')} 
+                class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-teal-600 transition-all text-left w-full"
+              >
+                <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-teal-600 group-hover:bg-teal-500 group-hover:text-white transition-colors shrink-0">
+                  <Clock size={20} />
+                </span>
+                <div class="ml-4 flex-1">
+                  <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Time Tracking</p>
+                  <p class="text-[10px] font-bold text-slate-400 group-hover:text-teal-100 transition-colors">Clock In/Out & Reports</p>
+                </div>
+              </button>
+
+              <!-- Front Desk - For front desk managers and above -->
+              {#if canAccessFrontDesk}
+                <button 
+                  onclick={async () => await goto('/front-desk')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-indigo-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                    <Hotel size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Front Desk</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-100 transition-colors">Check-in/out</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Inventory - For store keepers and above -->
+              {#if canManageInventory}
+                <button 
+                  onclick={async () => await goto('/inventory')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-amber-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
+                    <Package size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Inventory</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-amber-100 transition-colors">Stock Control</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Suppliers - For store keepers and above -->
+              {#if canManageInventory}
+                <button 
+                  onclick={async () => await goto('/suppliers')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-emerald-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                    <Truck size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Suppliers</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-emerald-100 transition-colors">Vendor Management</p>
+                  </div>
+                </button>
+              {/if}
+
+              <!-- Staff Management - For managers only -->
+              {#if canManageStaff}
+                <button 
+                  onclick={async () => await goto('/staff')} 
+                  class="group flex items-center p-4 bg-white border border-slate-100 rounded-2xl hover:bg-purple-600 transition-all text-left w-full"
+                >
+                  <span class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
+                    <Users size={20} />
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <p class="text-sm font-black text-slate-800 group-hover:text-white transition-colors">Staff Management</p>
+                    <p class="text-[10px] font-bold text-slate-400 group-hover:text-purple-100 transition-colors">Personnel & Roles</p>
+                  </div>
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
       </div>
     {/if}
   </main>

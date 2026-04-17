@@ -55,19 +55,19 @@
     if (!result) return;
     
     const report = `
-🏨 TOPGAN HMS - NIGHT AUDIT REPORT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 Date: ${formatDateTime(new Date())}
-👤 Auditor: ${formData.auditedBy || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 RESULTS
+ðŸ¨ TOPGAN HMS - NIGHT AUDIT REPORT
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+ðŸ“… Date: ${formatDateTime(new Date())}
+ðŸ‘¤ Auditor: ${formData.auditedBy || 'N/A'}
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+ðŸ“Š RESULTS
 System Count: ${result.systemCount}
 Physical Count: ${result.physicalCount}
 Discrepancy: ${result.discrepancy > 0 ? '+' : ''}${result.discrepancy}
 
-${result.flaggedRooms.length > 0 ? `🚨 FLAGGED: ${result.flaggedRooms.join(', ')}` : '✅ All Correct'}
-💰 Est. Revenue Gap: ${formatCurrency(result.unrecordedEstimate)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${result.flaggedRooms.length > 0 ? `ðŸš¨ FLAGGED: ${result.flaggedRooms.join(', ')}` : 'âœ… All Correct'}
+ðŸ’° Est. Revenue Gap: ${formatCurrency(result.unrecordedEstimate)}
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
 `;
     
     await navigator.clipboard.writeText(report);
@@ -210,7 +210,7 @@ ${result.flaggedRooms.length > 0 ? `🚨 FLAGGED: ${result.flaggedRooms.join(', 
               <div class="mt-8">
                 <p class="text-xs font-black text-red-400 uppercase tracking-widest mb-3">Fraud Risk Identified</p>
                 <div class="flex flex-wrap gap-2">
-                  {#each result.flaggedRooms as room}
+                  {#each result.flaggedRooms as room (room)}
                     <span class="px-3 py-1 bg-red-50 text-red-600 rounded-lg font-bold text-sm border border-red-100">
                       Room {room}
                     </span>

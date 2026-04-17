@@ -2,7 +2,15 @@ import type { PageServerLoad, Actions } from './$types';
 import { db, rooms, transactions, auditTrail } from '$lib/server/db';
 import { eq, and, gte, lt, desc } from 'drizzle-orm';
 import { error, redirect } from '@sveltejs/kit';
-import { canManageRoom } from '$lib/config/roles';
+
+// Define permission functions locally to avoid import issues
+function canManageRoom(role: string): boolean {
+  return ['owner', 'super_admin'].includes(role);
+}
+
+function canViewRoom(role: string): boolean {
+  return true; // All authenticated users can view rooms
+}
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) {
@@ -34,13 +42,14 @@ export const load: PageServerLoad = async ({ locals }) => {
     .limit(10);
   
   // Check if user can manage rooms (for UI buttons)
-  const canManage = canManageRoom(locals.user.role as any);
+  const canManage = canManageRoom(locals.user.role as string);
   
   const stats = {
     total: allRooms.length,
-    available: allRooms.filter(r => r.status === 'vacant').length,
+    available: allRooms.filter(r => r.status === 'vacant' && r.isActive === true).length,
     occupied: allRooms.filter(r => r.status === 'occupied').length,
-    maintenance: allRooms.filter(r => r.status === 'maintenance').length
+    maintenance: allRooms.filter(r => r.status === 'maintenance').length,
+    inactive: allRooms.filter(r => r.isActive === false).length
   };
   
   return {
@@ -106,8 +115,8 @@ export const actions: Actions = {
   },
   
   updateRoomStatus: async ({ request, locals }) => {
-    if (!locals.user || !canManageRoom(locals.user.role as any)) {
-      throw error(403, 'This action is not allowed');
+    if (!locals.user || !canManageRoom(locals.user.role as string)) {
+      throw error(403, 'Only owners and admins can modify room status');
     }
     
     const formData = await request.formData();
@@ -135,8 +144,8 @@ export const actions: Actions = {
   },
   
   createRoom: async ({ request, locals }) => {
-    if (!locals.user || !canManageRoom(locals.user.role as any)) {
-      throw error(403, 'This action is not allowed');
+    if (!locals.user || !canManageRoom(locals.user.role as string)) {
+      throw error(403, 'Only owners and admins can create rooms');
     }
     
     const formData = await request.formData();
@@ -165,8 +174,8 @@ export const actions: Actions = {
   },
   
   deleteRoom: async ({ request, locals }) => {
-    if (!locals.user || !canManageRoom(locals.user.role as any)) {
-      throw error(403, 'This action is not allowed.');
+    if (!locals.user || !canManageRoom(locals.user.role as string)) {
+      throw error(403, 'Only owners and admins can delete rooms');
     }
     
     const formData = await request.formData();
@@ -189,6 +198,40 @@ export const actions: Actions = {
       entityType: 'room',
       entityId: roomId.toString(),
       oldValues: oldRoom[0],
+      createdAt: new Date()
+    });
+    
+    return { success: true };
+  },
+  
+  toggleRoomActive: async ({ request, locals }) => {
+    if (!locals.user || !canManageRoom(locals.user.role as string)) {
+      throw error(403, 'Only owners and admins can toggle room active status');
+    }
+    
+    const formData = await request.formData();
+    const roomId = parseInt(formData.get('roomId') as string);
+    
+    const room = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
+    if (room.length === 0) throw error(404, 'Room not found');
+    
+    const newActiveState = !room[0].isActive;
+    
+    await db.update(rooms)
+      .set({ 
+        isActive: newActiveState,
+        status: newActiveState ? 'vacant' : room[0].status
+      })
+      .where(eq(rooms.id, roomId));
+    
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: newActiveState ? 'ROOM_ACTIVATED' : 'ROOM_DEACTIVATED',
+      entityType: 'room',
+      entityId: roomId.toString(),
+      oldValues: { isActive: room[0].isActive },
+      newValues: { isActive: newActiveState },
       createdAt: new Date()
     });
     
