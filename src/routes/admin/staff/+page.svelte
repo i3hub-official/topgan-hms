@@ -6,7 +6,7 @@
     MapPin, Banknote, FileText, Trash2
   } from 'lucide-svelte';
   
-  export let data;
+ let { data } = $props();
   
   let staff = $state(data.staff);
   let stats = $state(data.stats);
@@ -104,7 +104,7 @@
           <div class="p-6">
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-3">
-                <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl">
+                <div class="w-14 h-14 bg-linear-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl">
                   {staff.name.charAt(0)}
                 </div>
                 <div>
@@ -151,7 +151,7 @@
               </span>
               <div class="flex gap-2">
                 <button 
-                  onclick={() => toggleStaffStatus(staff.id, staff.isActive)}
+                  onclick={() => toggleStaffStatus(staff.id, staff.isActive ?? false)}
                   class="p-2 {staff.isActive ? 'hover:bg-rose-50 text-rose-600' : 'hover:bg-emerald-50 text-emerald-600'} rounded-xl transition-colors"
                 >
                   <Power size={16} />
@@ -174,7 +174,7 @@
     <div class="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto">
       <form method="POST" action="?/createStaff" onsubmit={async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
+        const formData = new FormData(e.target as HTMLFormElement);
         await createStaff(formData);
       }}>
         <div class="p-6 border-b border-slate-100">
