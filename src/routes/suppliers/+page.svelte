@@ -8,20 +8,20 @@
   
   let { data, form } = $props();
   
-  let suppliers = $derived(data.suppliers);
-  let categories = $derived((data.categories ?? []).filter((c): c is {id: string; name: string; icon: string} => c !== null) as {id: string; name: string; icon: string}[]);
+  let suppliers = $derived(data.suppliers || []);
+  let categories = $derived(data.categories || []);
   let canEdit = $derived(data.canEdit);
   let user = $derived(data.user);
   
   let showCreateModal = $state(false);
   let showEditModal = $state(false);
   let selectedSupplier = $state(null);
-  let searchQuery = $state('');
-  let selectedCategory = $state('');
+  let searchQuery = $state(''); 
+  let selectedCategory = $state(''); 
   
   let filteredSuppliers = $derived(
     suppliers.filter((s: any) => {
-      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch = s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            s.contactPerson?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !selectedCategory || s.category === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -112,12 +112,12 @@
   }
   
   function getCategoryIcon(categoryId: string) {
-    const cat = categories.find(c => c.id === categoryId);
+    const cat = categories?.find((c: any) => c.id === categoryId);
     return cat?.icon || '📦';
   }
   
   function getCategoryName(categoryId: string) {
-    const cat = categories.find(c => c.id === categoryId);
+    const cat = categories?.find((c: any) => c.id === categoryId);
     return cat?.name || categoryId;
   }
 </script>
@@ -376,7 +376,7 @@
             <select name="category" class="w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold">
               <option value="">Select Category</option>
               {#each categories as cat (cat.id)}
-                <option value={cat.id} selected={cat.id === selectedSupplier?.category}>
+                <option value={cat.id} selected={cat.id === selectedSupplier.category}>
                   {cat.icon} {cat.name}
                 </option>
               {/each}
