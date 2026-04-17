@@ -7,7 +7,7 @@ import { db } from '$lib/server/db';
 
 export const auth = betterAuth({
   baseURL: env.ORIGIN || 'http://localhost:5173',
-  secret: env.BETTER_AUTH_SECRET || 'your-secret-key-change-this',
+  secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'sqlite' }),
   emailAndPassword: { 
     enabled: true,

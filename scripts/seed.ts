@@ -10,7 +10,8 @@ import * as schema from '../src/lib/server/db/schema.js';
 import crypto from 'node:crypto';
 
 const client = createClient({
-  url: process.env.DATABASE_URL || 'file:./topgan.db',
+  url: process.env.DATABASE_URL ,  //|| 'file:./topgan.db',
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 const db = drizzle(client, { schema });

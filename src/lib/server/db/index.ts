@@ -6,11 +6,18 @@ import * as allSchema from './schema';
 import { env } from '$env/dynamic/private';
 
 const client = createClient({
-  url: env.DATABASE_URL,
+  // Use Turso in production, fallback to local SQLite for development
+  url: env.TURSO_DATABASE_URL, // || 'file:./topgan.db',
+  authToken: env.TURSO_AUTH_TOKEN,
 });
-// || 'file:./topgan.db'
-// We pass the consolidated schema object here for relations and Better Auth
-export const db = drizzle(client, { schema: allSchema.schema });
 
-// Re-export individual tables for easier importing elsewhere
+// Pass the consolidated schema object (which includes all tables + relations)
+export const db = drizzle(client, { 
+  schema: allSchema.schema 
+});
+
+// Re-export everything from the schema for convenient importing
 export * from './schema';
+
+// Optional: Export the client if needed elsewhere
+export { client };

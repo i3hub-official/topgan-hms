@@ -6,7 +6,8 @@ import { config } from 'dotenv';
 config();
 
 const client = createClient({
-  url: process.env.DATABASE_URL || 'file:./topgan.db',
+  url: process.env.TURSO_DATABASE_URL || 'file:./topgan.db',
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 const db = drizzle(client);
