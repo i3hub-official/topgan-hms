@@ -228,6 +228,19 @@ export const purchaseOrders = sqliteTable('purchase_orders', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
 
+export const inventoryCategories = sqliteTable('inventory_categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  icon: text('icon').default('📦'),
+  color: text('color').default('#64748b'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  sortOrder: integer('sort_order').default(0),
+  parentId: integer('parent_id').references((): any => inventoryCategories.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$default(() => new Date()),
+});
+
 export const purchaseOrderItems = sqliteTable('purchase_order_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderId: integer('order_id').notNull().references(() => purchaseOrders.id),

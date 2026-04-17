@@ -50,6 +50,20 @@
       "when": 1776437302525,
       "tag": "0006_rare_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1776441462853,
+      "tag": "0007_worthless_puppet_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1776441803514,
+      "tag": "0008_lying_may_parker",
+      "breakpoints": true
     }
   ]
 }
