@@ -1,3 +1,5 @@
+// src/lib/server/categories.ts
+
 import { db, categories } from '$lib/server/db';
 import { eq, asc } from 'drizzle-orm';
 
@@ -30,6 +32,24 @@ export const defaultInventoryCategories = [
   { type: 'inventory', name: 'Kitchen Equipment', icon: '🍳', sortOrder: 10 },
   { type: 'inventory', name: 'Bar Supplies', icon: '🍸', sortOrder: 11 },
   { type: 'inventory', name: 'Office Supplies', icon: '📎', sortOrder: 12 }
+];
+
+export const defaultInventoryUnits = [
+  { name: 'Carton',   abbreviation: 'ctn',  sortOrder: 1  },
+  { name: 'Bottle',   abbreviation: 'btl',  sortOrder: 2  },
+  { name: 'Crate',    abbreviation: 'crt',  sortOrder: 3  },
+  { name: 'Bag',      abbreviation: 'bag',  sortOrder: 4  },
+  { name: 'Litre',    abbreviation: 'L',    sortOrder: 5  },
+  { name: 'Kilogram', abbreviation: 'kg',   sortOrder: 6  },
+  { name: 'Gram',     abbreviation: 'g',    sortOrder: 7  },
+  { name: 'Piece',    abbreviation: 'pcs',  sortOrder: 8  },
+  { name: 'Dozen',    abbreviation: 'doz',  sortOrder: 9  },
+  { name: 'Pack',     abbreviation: 'pk',   sortOrder: 10 },
+  { name: 'Roll',     abbreviation: 'roll', sortOrder: 11 },
+  { name: 'Box',      abbreviation: 'box',  sortOrder: 12 },
+  { name: 'Gallon',   abbreviation: 'gal',  sortOrder: 13 },
+  { name: 'Drum',     abbreviation: 'drm',  sortOrder: 14 },
+  { name: 'Jerrycan', abbreviation: 'jrn',  sortOrder: 15 },
 ];
 
 export async function getCategories(type: 'supplier' | 'inventory') {

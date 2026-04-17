@@ -238,6 +238,15 @@ export const purchaseOrderItems = sqliteTable('purchase_order_items', {
   receivedQuantity: real('received_quantity').default(0)
 });
 
+export const inventoryUnits = sqliteTable('inventory_units', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),           // e.g. "Carton"
+  abbreviation: text('abbreviation').notNull(), // e.g. "ctn"
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
+});
+
 // --- RELATIONS ---
 export const roomsRelations = relations(rooms, ({ many }) => ({
   transactions: many(transactions)
@@ -332,5 +341,6 @@ export const schema = {
   suppliers,
   categories,
   purchaseOrders,
-  purchaseOrderItems
+  purchaseOrderItems,
+  inventoryUnits
 };

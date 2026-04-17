@@ -1,3 +1,5 @@
+// scripts/seeds.ts
+
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
@@ -40,6 +42,7 @@ async function resetAndSeed() {
     await db.delete(schema.loginHistory);
     await db.delete(schema.staffDetails);
     await db.delete(schema.staffRoles);
+    await db.delete(schema.inventoryUnits);
     
     // Better Auth Core
     await db.delete(schema.session);
@@ -70,6 +73,26 @@ async function resetAndSeed() {
       { type: 'inventory', name: 'Food Supplies', icon: '🍽️', sortOrder: 2 },
     ];
     await db.insert(schema.categories).values(categoryData);
+
+    // 3b. CREATE INVENTORY UNITS
+console.log('\n📦 Seeding inventory units...');
+await db.insert(schema.inventoryUnits).values([
+  { name: 'Carton',      abbreviation: 'ctn',  sortOrder: 1  },
+  { name: 'Bottle',      abbreviation: 'btl',  sortOrder: 2  },
+  { name: 'Crate',       abbreviation: 'crt',  sortOrder: 3  },
+  { name: 'Bag',         abbreviation: 'bag',  sortOrder: 4  },
+  { name: 'Litre',       abbreviation: 'L',    sortOrder: 5  },
+  { name: 'Kilogram',    abbreviation: 'kg',   sortOrder: 6  },
+  { name: 'Gram',        abbreviation: 'g',    sortOrder: 7  },
+  { name: 'Piece',       abbreviation: 'pcs',  sortOrder: 8  },
+  { name: 'Dozen',       abbreviation: 'doz',  sortOrder: 9  },
+  { name: 'Pack',        abbreviation: 'pk',   sortOrder: 10 },
+  { name: 'Roll',        abbreviation: 'roll', sortOrder: 11 },
+  { name: 'Box',         abbreviation: 'box',  sortOrder: 12 },
+  { name: 'Gallon',      abbreviation: 'gal',  sortOrder: 13 },
+  { name: 'Drum',        abbreviation: 'drm',  sortOrder: 14 },
+  { name: 'Jerrycan',    abbreviation: 'jrn',  sortOrder: 15 },
+]);
 
     // 4. CREATE ROOMS
     console.log('\n🏨 Creating 10 rooms...');
