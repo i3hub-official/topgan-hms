@@ -12,7 +12,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.session = session?.session;
 
   // Define public routes that don't require authentication
-  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/signin'];
+  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/signin', '/api/seed'];
   const isPublicRoute = publicRoutes.some(route => event.url.pathname.startsWith(route));
   
   // Protect all other routes

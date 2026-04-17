@@ -1,25 +1,26 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
-	"compilerOptions": {
-		 "target": "ES2022",
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
     "module": "ESNext",
-		"rewriteRelativeImportExtensions": true,
-		"types": ["node"],
-		"allowJs": true,
-		"checkJs": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true,
-		"sourceMap": true,
-		"strict": true,
-		"moduleResolution": "bundler"
-	},
-	"include": ["src/**/*", "scripts/**/*", ".svelte-kit/**/*", "drizzle.config.ts", "seed.js", "seed.js"],
-	"exclude": ["node_modules", "dist"]
-	}
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
-	//
-	// To make changes to top-level options such as include and exclude, we recommend extending
-	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
+    "moduleResolution": "bundler",
+    "types": ["node"], // Explicitly tell TS to include Node types
+    "rewriteRelativeImportExtensions": true,
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true
+  },
+  "include": [
+    "src/**/*", 
+    "scripts/**/*", 
+    ".svelte-kit/**/*", 
+    "drizzle.config.ts", 
+    "scripts/seed.ts/seed.ts" // If your seed file is .ts, use .ts here
+  ],
+  "exclude": ["node_modules", "dist"]
+}

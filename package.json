@@ -18,7 +18,7 @@
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"db:reset": "rm -f topgan.db && npm run db:migrate && node scripts/seed.js",
-		"seed": "tsx seed.ts"
+		"seed:api": "curl http://localhost:5173/api/seed"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
