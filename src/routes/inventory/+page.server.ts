@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   }
   
   // Get inventory items with supplier info
-  const inventoryItems = await db.select({
+  const inventoryItemsRaw = await db.select({
     id: inventory.id,
     itemName: inventory.itemName,
     category: inventory.category,
@@ -62,6 +62,29 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   .limit(limit)
   .offset(offset);
   
+  // Convert inventory items to plain objects
+  const inventoryItems = (inventoryItemsRaw || []).map(item => ({
+    id: Number(item.id),
+    itemName: String(item.itemName || ''),
+    category: String(item.category || ''),
+    unit: String(item.unit || ''),
+    supplierId: item.supplierId ? Number(item.supplierId) : null,
+    supplierName: item.supplierName ? String(item.supplierName) : null,
+    costPrice: Number(item.costPrice ?? 0),
+    sellingPrice: Number(item.sellingPrice ?? 0),
+    openingStock: Number(item.openingStock ?? 0),
+    additions: Number(item.additions ?? 0),
+    sales: Number(item.sales ?? 0),
+    closingStock: Number(item.closingStock ?? 0),
+    physicalCount: item.physicalCount ? Number(item.physicalCount) : null,
+    variance: item.variance ? Number(item.variance) : null,
+    reorderLevel: Number(item.reorderLevel ?? 10),
+    reorderQuantity: Number(item.reorderQuantity ?? 50),
+    location: item.location ? String(item.location) : null,
+    lastOrderDate: item.lastOrderDate ? Number(item.lastOrderDate) : null,
+    createdAt: item.createdAt ? Number(item.createdAt) : null
+  }));
+  
   // Get total count
   const totalResult = await db.select({ count: sql<number>`count(*)` })
     .from(inventory)
@@ -69,14 +92,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   
   const totalCount = Number(totalResult[0]?.count || 0);
   
-  // Get low stock items (based on reorder level)
-  const lowStockItems = inventoryItems.filter(item => item.closingStock <= (item.reorderLevel || 10));
+  // Get low stock items
+  const lowStockItems = inventoryItems.filter(item => (item.closingStock ?? 0) <= (item.reorderLevel ?? 10));
   
   // Get all suppliers for dropdown
-  const allSuppliers = await db.select().from(suppliers).where(eq(suppliers.isActive, true));
+  const suppliersRaw = await db.select().from(suppliers).where(eq(suppliers.isActive, true));
+  const allSuppliers = (suppliersRaw || []).map(sup => ({
+    id: Number(sup.id),
+    name: String(sup.name || ''),
+    contactPerson: sup.contactPerson ? String(sup.contactPerson) : null,
+    phone: String(sup.phone || ''),
+    email: sup.email ? String(sup.email) : null,
+    category: sup.category ? String(sup.category) : null,
+    address: sup.address ? String(sup.address) : null,
+    isActive: sup.isActive === 1,
+    createdAt: sup.createdAt ? Number(sup.createdAt) : null
+  }));
   
   // Get recent purchase orders
-  const recentOrders = await db.select({
+  const recentOrdersRaw = await db.select({
     id: purchaseOrders.id,
     orderNumber: purchaseOrders.orderNumber,
     supplierName: suppliers.name,
@@ -90,9 +124,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   .orderBy(desc(purchaseOrders.createdAt))
   .limit(5);
   
+  const recentOrders = (recentOrdersRaw || []).map(order => ({
+    id: Number(order.id),
+    orderNumber: String(order.orderNumber || ''),
+    supplierName: order.supplierName ? String(order.supplierName) : null,
+    orderDate: order.orderDate ? Number(order.orderDate) : null,
+    expectedDelivery: order.expectedDelivery ? Number(order.expectedDelivery) : null,
+    status: String(order.status || 'pending'),
+    totalAmount: Number(order.totalAmount ?? 0)
+  }));
+  
   // Calculate stock value
-  const totalStockValue = inventoryItems.reduce((sum, item) => sum + (item.closingStock * (item.costPrice || 0)), 0);
-  const totalPotentialRevenue = inventoryItems.reduce((sum, item) => sum + (item.closingStock * (item.sellingPrice || 0)), 0);
+  const totalStockValue = inventoryItems.reduce((sum, item) => sum + ((item.closingStock ?? 0) * (item.costPrice ?? 0)), 0);
+  const totalPotentialRevenue = inventoryItems.reduce((sum, item) => sum + ((item.closingStock ?? 0) * (item.sellingPrice ?? 0)), 0);
   
   const stats = {
     totalItems: totalCount,
@@ -102,10 +146,44 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     profitMargin: totalStockValue > 0 ? ((totalPotentialRevenue - totalStockValue) / totalStockValue * 100).toFixed(1) : 0
   };
   
+  // Handle categories - check if it's an array
+  let serializedCategories = [];
+  if (inventoryCategories && Array.isArray(inventoryCategories)) {
+    serializedCategories = inventoryCategories.map(cat => ({
+      id: String(cat.id || ''),
+      name: String(cat.name || ''),
+      icon: String(cat.icon || '📦')
+    }));
+  } else if (inventoryCategories && typeof inventoryCategories === 'object') {
+    // If it's an object with values, try to convert
+    serializedCategories = Object.values(inventoryCategories).map((cat: any) => ({
+      id: String(cat.id || ''),
+      name: String(cat.name || ''),
+      icon: String(cat.icon || '📦')
+    }));
+  }
+  
+  // Handle units - check if it's an array
+  let serializedUnits = [];
+  if (inventoryUnits && Array.isArray(inventoryUnits)) {
+    serializedUnits = inventoryUnits.map(unit => ({
+      id: String(unit.id || ''),
+      name: String(unit.name || ''),
+      symbol: unit.symbol ? String(unit.symbol) : null
+    }));
+  } else if (inventoryUnits && typeof inventoryUnits === 'object') {
+    // If it's an object with values, try to convert
+    serializedUnits = Object.values(inventoryUnits).map((unit: any) => ({
+      id: String(unit.id || ''),
+      name: String(unit.name || ''),
+      symbol: unit.symbol ? String(unit.symbol) : null
+    }));
+  }
+  
   return {
     inventory: inventoryItems,
-    categories: inventoryCategories,
-    units: inventoryUnits,
+    categories: serializedCategories,
+    units: serializedUnits,
     suppliers: allSuppliers,
     stats,
     lowStockItems,
@@ -119,10 +197,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     search,
     category,
     canManage,
-    user: locals.user
+    user: {
+      id: locals.user.id,
+      name: locals.user.name || '',
+      email: locals.user.email || '',
+      role: locals.user.role || 'staff',
+      staffId: locals.user.staffId || null
+    }
   };
 };
 
+// Actions remain the same
 export const actions: Actions = {
   addInventory: async ({ request, locals }) => {
     if (!locals.user) throw error(401, 'Unauthorized');
@@ -310,7 +395,6 @@ export const actions: Actions = {
     
     const orderItems = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.orderId, orderId));
     
-    // Update inventory stock
     for (const item of orderItems) {
       const inventoryItem = await db.select().from(inventory).where(eq(inventory.id, item.itemId)).limit(1);
       if (inventoryItem.length > 0) {

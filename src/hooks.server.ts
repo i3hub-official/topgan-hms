@@ -1,3 +1,6 @@
+// src/hooks.server.ts
+
+
 import { auth } from '$lib/server/auth';
 import { redirect, type Handle } from '@sveltejs/kit';
 
@@ -8,8 +11,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   });
 
   // Set locals for use in load functions and pages
-  event.locals.user = session?.user;
-  event.locals.session = session?.session;
+  event.locals.user = session?.user ?? null;
+  event.locals.session = session?.session ?? null;
 
   // Define public routes that don't require authentication
   const publicRoutes = ['/login', '/api/auth/login', '/api/auth/signin', '/api/seed'];

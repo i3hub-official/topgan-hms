@@ -1,7 +1,8 @@
 import type { PageServerLoad, Actions } from './$types';
-import { db, user, storeSections } from '$lib/server/db';
+import { db, user, storeSections, auditTrail } from "$lib/server/db";
 import { eq, and } from 'drizzle-orm';
 import { error, redirect } from '@sveltejs/kit';
+
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) {
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(303, '/dashboard');
   }
   
-  // Get all store keepers and their assigned sections
+  // Get all store keepers (all variants)
   const storeKeepers = await db.select()
     .from(user)
     .where(
@@ -22,6 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       )
     );
   
+  // Get all store sections assignments
   const sections = await db.select()
     .from(storeSections)
     .orderBy(storeSections.section);
@@ -60,6 +62,16 @@ export const actions: Actions = {
         assignedBy: locals.user.id,
         isActive: true
       });
+      
+      await db.insert(auditTrail).values({
+        id: crypto.randomUUID(),
+        userId: locals.user.id,
+        action: 'ASSIGN_STORE_SECTION',
+        entityType: 'user',
+        entityId: userId,
+        newValues: { section },
+        createdAt: new Date()
+      });
     }
     
     return { success: true };
@@ -74,6 +86,15 @@ export const actions: Actions = {
     const sectionId = parseInt(formData.get('sectionId') as string);
     
     await db.delete(storeSections).where(eq(storeSections.id, sectionId));
+    
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: 'REVOKE_STORE_SECTION',
+      entityType: 'store_section',
+      entityId: sectionId.toString(),
+      createdAt: new Date()
+    });
     
     return { success: true };
   },
@@ -91,6 +112,16 @@ export const actions: Actions = {
     
     // Update user role back to regular staff
     await db.update(user).set({ role: 'staff' }).where(eq(user.id, userId));
+    
+    await db.insert(auditTrail).values({
+      id: crypto.randomUUID(),
+      userId: locals.user.id,
+      action: 'REVOKE_ALL_STORE_SECTIONS',
+      entityType: 'user',
+      entityId: userId,
+      newValues: { role: 'staff' },
+      createdAt: new Date()
+    });
     
     return { success: true };
   }

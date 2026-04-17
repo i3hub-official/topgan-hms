@@ -247,6 +247,15 @@ export const inventoryUnits = sqliteTable('inventory_units', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$default(() => new Date())
 });
 
+export const storeSections = sqliteTable('store_sections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => user.id),
+  section: text('section').notNull(), // 'bar', 'kitchen', 'store'
+  assignedAt: integer('assigned_at', { mode: 'timestamp' }).$default(() => new Date()),
+  assignedBy: text('assigned_by').references(() => user.id),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+});
+
 // --- RELATIONS ---
 export const roomsRelations = relations(rooms, ({ many }) => ({
   transactions: many(transactions)
