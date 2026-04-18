@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { runNightAudit } from '$lib/audit/engine';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 
 const auditSchema = z.object({
   physicalRooms: z.string().min(1, 'Enter at least one room number'),
